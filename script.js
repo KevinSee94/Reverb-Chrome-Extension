@@ -59,29 +59,55 @@ function processData( arr ){
 	for( q = 0; q < arr.length; q++ ){
 		//If there was no price guide for the item
 		if( (arr[q].bottom == 0) && (arr[q].top == 0)){
-			toChange = (arr[q].DomRef).getElementsByClassName("text-orange");
+			toChange = (arr[q].DomRef).getElementsByClassName("product-card__price");
 			toChange[0].style.color = "black";
 		}else{
 			//Bad deal
 			if( arr[q].actual > (arr[q].top - ((arr[q].top - arr[q].bottom) * .3) )){
-				toChange = (arr[q].DomRef).getElementsByClassName("text-orange");
+				toChange = (arr[q].DomRef).getElementsByClassName("product-card__price");
 				toChange[0].style.color = "red";
 			//Good deal
 			} else if(arr[q].actual < (arr[q].bottom + ((arr[q].top - arr[q].bottom) * .3) )){
-				toChange = (arr[q].DomRef).getElementsByClassName("text-orange");
+				toChange = (arr[q].DomRef).getElementsByClassName("product-card__price");
 				toChange[0].style.color = "green";
 			//Ok deal
 			} else{
-				toChange = (arr[q].DomRef).getElementsByClassName("text-orange");
+				toChange = (arr[q].DomRef).getElementsByClassName("product-card__price");
 				toChange[0].style.color = "#e6b800";
 			}
 		}
 	}
 }
 
+function dealRatio( listingsArr ){
+	listingsArr = listingsArr.listings;
+	dealsArr = [];
+	for( ind = 0; ind < listingsArr.length; ind++ ){
+		console.log("Cycle " + ind + " of " + listingsArr.length);
+		thisRequest = getJSON( "https://reverb.com/api/listings/" + String(listingsArr[ind].id), function(data){
+			console.log(data);
+			prodData = data;
+			console.log("prodData");
+			console.log(prodData);
+			if( prodData._embedded && prodData._embedded.price_guide ){
+				console.log(prodData._embedded.price_guide.title + " has a price guide")
+				realPrice = Number(prodData.price.amount);
+				lowVal = Number(prodData._embedded.price_guide.estimated_value.bottom_price);
+				console.log("Real price is " + String(realPrice) + " and low price is " + String(lowVal) );
+				if( realPrice < lowVal || realPrice < (lowVal * 1.1) ){
+
+					dealsArr.push({"Name":prodData._embedded.price_guide.title,"Price":realPrice,"LowVal":lowVal,"Link":prodData._links.web.href});
+					console.log("pushed " + prodData._links.web.href)
+				}			
+			}
+		}, function(status){console.log("Something went wrong")});	
+	}
+	console.log("dealsArr");
+	console.log(dealsArr);
+}
 
 //Program start
-x = document.getElementsByClassName("product");
+x = document.getElementsByClassName("product-card");
 queryStr = ""
 var infoArr = new Array();
 var urlArr = new Array();
@@ -95,15 +121,16 @@ var id = "";
 
 //Loop to populate urlArr and domArr
 for( i = 0; i < x.length; i++ ){
-	className = x[i].getAttribute("class");
 	top = 0;
 	bottom = 0;
 	//The first three featured posts need to be handled differently
-    if( className == "product bordered bumped position-relative" ){
-        queryStr = String(x[i].getAttribute("data-listing-id"));}
-    else if( className == "product" ){
+    if( i < 3 ){
         y = x[i].getElementsByTagName("a");
         queryStr = (y[0].getAttribute("href")).substring(24,31);
+    }
+    else{
+        y = x[i].getElementsByTagName("a");
+        queryStr = (y[0].getAttribute("href")).substring(6,13);
     }
     //Remove non-numeric characters from the ID query string
     queryStr = queryStr.replace(/\D/g,'');
